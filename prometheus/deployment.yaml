@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "mkdir -p /prometheus/data && chmod -R 777 /prometheus/data"]
+          volumeMounts:
+            - name: prometheus-storage
+              mountPath: /prometheus/data
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.52.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus/data"
+          ports:
+            - containerPort: 9090
+      volumes:
+        - name: prometheus-storage
+          # persistentVolumeClaim:
+          #   claimName: prometheus-storage
+          hostPath:
+            path: /data/prometheus
+            type: DirectoryOrCreate
